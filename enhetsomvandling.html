@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enhetsomvandling</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f3;color:#1a1a1a;min-height:100vh;padding:1rem}
+.app{max-width:580px;margin:0 auto;padding:1rem 0}
+.screen{display:none}.screen.active{display:block}
+.card{background:white;border:1px solid #e8e8e4;border-radius:12px;padding:1.25rem;margin-bottom:10px}
+.muted{color:#888;font-size:14px}
+.label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem}
+h1{font-size:26px;font-weight:600;margin-bottom:.25rem}
+h2{font-size:20px;font-weight:600;margin-bottom:.5rem}
+h3{font-size:17px;font-weight:600;margin-bottom:.75rem;line-height:1.4}
+input,textarea{width:100%;padding:11px 14px;border:1px solid #ddd;border-radius:8px;font-size:15px;font-family:inherit;outline:none;transition:border-color .15s;background:white;color:#1a1a1a}
+input:focus,textarea:focus{border-color:#3b82f6}
+textarea{resize:vertical;min-height:80px}
+button{padding:11px 20px;border-radius:8px;border:1px solid #ddd;background:white;font-size:14px;font-family:inherit;cursor:pointer;transition:all .15s;color:#1a1a1a}
+button:hover{background:#f0f0ee}
+button.primary{background:#1a1a1a;color:white;border-color:#1a1a1a}
+button.primary:hover{background:#333}
+button:disabled{opacity:.4;cursor:not-allowed}
+.progress{height:3px;background:#eee;border-radius:2px;margin-bottom:1.5rem;overflow:hidden}
+.progress-fill{height:100%;background:#3b82f6;border-radius:2px;transition:width .3s ease}
+.option{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 16px;margin-bottom:8px;background:white;border:1px solid #ddd;border-radius:10px;cursor:pointer;font-size:15px;font-family:inherit;transition:all .15s}
+.option:hover{border-color:#bbb;background:#fafafa}
+.option .dot{width:18px;height:18px;border-radius:50%;border:1.5px solid #ddd;flex-shrink:0;transition:all .15s;background:transparent}
+.option.selected{border-color:#3b82f6;background:#eff6ff}
+.option.selected .dot{background:#3b82f6;border-color:#3b82f6}
+.option.correct{border-color:#16a34a;background:#f0fdf4}
+.option.correct .dot{background:#16a34a;border-color:#16a34a}
+.option.wrong{border-color:#dc2626;background:#fef2f2}
+.option.wrong .dot{background:#dc2626;border-color:#dc2626}
+.feedback{padding:12px 16px;border-radius:8px;font-size:14px;margin-bottom:1rem;display:none;line-height:1.5}
+.feedback.show{display:block}
+.feedback.ok{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+.feedback.bad{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+.stab{padding:7px 14px;border-radius:8px;border:1px solid #ddd;font-size:13px;cursor:pointer;background:white;font-family:inherit;color:#666;transition:all .15s}
+.stab.active{background:#1a1a1a;color:white;border-color:#1a1a1a}
+.flashcard{perspective:600px;height:150px;cursor:pointer;margin-bottom:1rem}
+.flashcard-inner{width:100%;height:100%;transition:transform .4s;transform-style:preserve-3d;position:relative}
+.flashcard.flipped .flashcard-inner{transform:rotateY(180deg)}
+.fc-front,.fc-back{position:absolute;width:100%;height:100%;backface-visibility:hidden;display:flex;align-items:center;justify-content:center;border-radius:12px;border:1px solid #e8e8e4;padding:1.25rem;text-align:center}
+.fc-front{background:white;font-size:20px;font-weight:600}
+.fc-back{background:#f5f5f3;transform:rotateY(180deg);font-size:15px;color:#555}
+.match-item{padding:10px 14px;border-radius:8px;border:1px solid #ddd;cursor:pointer;font-size:14px;transition:all .15s;margin-bottom:6px;background:white}
+.match-item:hover{border-color:#bbb;background:#fafafa}
+.match-item.sel{border-color:#3b82f6;background:#eff6ff;color:#1d4ed8}
+.match-item.matched{border-color:#16a34a;background:#f0fdf4;color:#166534;cursor:default;pointer-events:none}
+.match-item.wrong-flash{border-color:#dc2626;background:#fef2f2}
+.match-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.step-pill{padding:6px 14px;border-radius:20px;font-size:13px;border:1px solid #e8e8e4;color:#888;background:white;display:inline-block}
+.step-pill.done{background:#dcfce7;color:#166534;border-color:#bbf7d0}
+.step-pill.active{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;font-weight:500}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div id="enterScreen" class="screen active">
+  <div style="text-align:center;padding:2.5rem 0 1.5rem">
+    <div class="label" style="text-align:center;margin-bottom:.5rem">Matematik åk 6</div>
+    <h1 style="margin-bottom:.25rem">Enhetsomvandling</h1>
+    <p class="muted" style="margin-bottom:2rem">Ange ditt kodord för att komma igång</p>
+    <div style="max-width:280px;margin:0 auto">
+      <input id="codeInput" type="text" placeholder="Ditt kodord" style="text-align:center;font-size:18px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px" maxlength="20" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')enterApp()">
+      <div id="codeErr" style="color:#dc2626;font-size:13px;min-height:18px;margin-bottom:10px;text-align:left"></div>
+      <button class="primary" onclick="enterApp()" style="width:100%">Fortsätt</button>
+    </div>
+  </div>
+</div>
+
+<div id="hubScreen" class="screen">
+  <div style="margin-bottom:1.25rem">
+    <div class="label">Välkommen, <span id="hubName"></span></div>
+    <h2>Vad ska vi göra?</h2>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap" id="progressPills"></div>
+  <div id="hubButtons"></div>
+</div>
+
+<div id="quizScreen" class="screen">
+  <div class="label" id="qSubject"></div>
+  <div class="progress" style="margin-top:.5rem"><div class="progress-fill" id="qProgress"></div></div>
+  <div class="muted" id="qNum" style="margin-bottom:.75rem"></div>
+  <h3 id="qText"></h3>
+  <div id="qArea"></div>
+  <div class="feedback" id="qFeedback"></div>
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:1rem">
+    <button class="primary" id="submitBtn" onclick="submitQ()">Svara</button>
+    <button class="primary" id="nextBtn" style="display:none" onclick="nextQ()">Nästa</button>
+  </div>
+</div>
+
+<div id="practiceScreen" class="screen">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+    <div>
+      <div class="label" id="practiceLabel"></div>
+      <div class="muted">Välj ett övningsläge</div>
+    </div>
+    <button onclick="goHub()" style="font-size:13px">Tillbaka</button>
+  </div>
+  <div style="display:flex;gap:6px;margin-bottom:1.5rem;flex-wrap:wrap">
+    <button class="stab active" onclick="showPractice('flash')">Flashcards</button>
+    <button class="stab" onclick="showPractice('match')">Matchning</button>
+    <button class="stab" onclick="showPractice('retry')">Öva på felen</button>
+  </div>
+  <div id="practiceArea"></div>
+</div>
+
+<div id="survivalScreen" class="screen">
+  <div id="svContent"></div>
+</div>
+
+</div>
+<script>
+const QUIZZES={
+  LÄNGD:{
+    title:"Längd",subject:"Matematik åk 6",
+    questions:[
+      {type:"multi",text:"45 mm → cm. Vad blir det?",options:["0,45 cm","4,5 cm","450 cm","4 500 cm"],correct:1,feedback_ok:"Rätt! mm → cm, dividera med 10.",feedback_bad:"mm → cm är mot större enhet. Dividera med 10: 45 ÷ 10 = 4,5 cm."},
+      {type:"multi",text:"3,2 m → cm. Vad blir det?",options:["0,032 cm","32 cm","320 cm","3 200 cm"],correct:2,feedback_ok:"Rätt! m → cm, multiplicera med 100.",feedback_bad:"m → cm är mot mindre enhet. Multiplicera med 100: 3,2 × 100 = 320 cm."},
+      {type:"multi",text:"1 500 m → km. Vad blir det?",options:["150 km","15 km","1,5 km","0,15 km"],correct:2,feedback_ok:"Rätt! m → km, dividera med 1 000.",feedback_bad:"m → km är mot större enhet. Dividera med 1 000."},
+      {type:"multi",text:"0,8 km → m. Vad blir det?",options:["8 m","80 m","800 m","8 000 m"],correct:2,feedback_ok:"Rätt! km → m, multiplicera med 1 000.",feedback_bad:"km → m är mot mindre enhet. Multiplicera med 1 000: 0,8 × 1 000 = 800 m."},
+      {type:"multi",text:"6 dm → cm. Vad blir det?",options:["0,6 cm","6 cm","60 cm","600 cm"],correct:2,feedback_ok:"Rätt! dm → cm, multiplicera med 10.",feedback_bad:"dm → cm är mot mindre enhet. Multiplicera med 10: 6 × 10 = 60 cm."},
+      {type:"open",text:"Förklara tricket: när multiplicerar man och när dividerar man?",facit:"Mot en STÖRRE enhet → dividera (talet blir mindre). Mot en MINDRE enhet → multiplicera (talet blir större)."}
+    ],
+    flashcards:[
+      {term:"mm → cm",def:"÷ 10"},{term:"cm → dm",def:"÷ 10"},{term:"dm → m",def:"÷ 10"},
+      {term:"m → km",def:"÷ 1 000"},{term:"cm → m",def:"÷ 100"},
+      {term:"km → m",def:"× 1 000"},{term:"m → cm",def:"× 100"},{term:"cm → mm",def:"× 10"}
+    ],
+    matching:[
+      {term:"45 mm",def:"4,5 cm"},{term:"3,2 m",def:"320 cm"},
+      {term:"1 500 m",def:"1,5 km"},{term:"6 dm",def:"60 cm"},{term:"0,8 km",def:"800 m"}
+    ]
+  },
+  VIKT:{
+    title:"Vikt",subject:"Matematik åk 6",
+    questions:[
+      {type:"multi",text:"500 g → hg. Vad blir det?",options:["50 hg","5 hg","0,5 hg","5 000 hg"],correct:1,feedback_ok:"Rätt! g → hg, dividera med 100.",feedback_bad:"g → hg är mot större enhet. Dividera med 100: 500 ÷ 100 = 5 hg."},
+      {type:"multi",text:"2,4 kg → g. Vad blir det?",options:["24 g","240 g","2 400 g","24 000 g"],correct:2,feedback_ok:"Rätt! kg → g, multiplicera med 1 000.",feedback_bad:"kg → g är mot mindre enhet. Multiplicera med 1 000: 2,4 × 1 000 = 2 400 g."},
+      {type:"multi",text:"3 ton → kg. Vad blir det?",options:["30 kg","300 kg","3 000 kg","30 000 kg"],correct:2,feedback_ok:"Rätt! ton → kg, multiplicera med 1 000.",feedback_bad:"ton → kg är mot mindre enhet. Multiplicera med 1 000."},
+      {type:"multi",text:"8 hg → kg. Vad blir det?",options:["80 kg","0,08 kg","0,8 kg","8 000 kg"],correct:2,feedback_ok:"Rätt! hg → kg, dividera med 10.",feedback_bad:"hg → kg är mot större enhet. Dividera med 10: 8 ÷ 10 = 0,8 kg."},
+      {type:"multi",text:"4 500 g → kg. Vad blir det?",options:["45 kg","4,5 kg","0,45 kg","450 kg"],correct:1,feedback_ok:"Rätt! g → kg, dividera med 1 000.",feedback_bad:"g → kg är mot större enhet. Dividera med 1 000: 4 500 ÷ 1 000 = 4,5 kg."},
+      {type:"open",text:"Hur många gram är 2,5 kg? Visa hur du tänker.",facit:"kg → g är mot en mindre enhet. Multiplicera med 1 000: 2,5 × 1 000 = 2 500 g."}
+    ],
+    flashcards:[
+      {term:"g → hg",def:"÷ 100"},{term:"hg → kg",def:"÷ 10"},{term:"kg → ton",def:"÷ 1 000"},
+      {term:"ton → kg",def:"× 1 000"},{term:"kg → g",def:"× 1 000"},{term:"hg → g",def:"× 100"}
+    ],
+    matching:[
+      {term:"500 g",def:"5 hg"},{term:"2,4 kg",def:"2 400 g"},
+      {term:"3 ton",def:"3 000 kg"},{term:"8 hg",def:"0,8 kg"},{term:"4 500 g",def:"4,5 kg"}
+    ]
+  },
+  VOLYM:{
+    title:"Volym",subject:"Matematik åk 6",
+    questions:[
+      {type:"multi",text:"250 ml → dl. Vad blir det?",options:["25 dl","0,25 dl","2,5 dl","2 500 dl"],correct:2,feedback_ok:"Rätt! ml → dl, dividera med 100.",feedback_bad:"ml → dl är mot större enhet. Dividera med 100: 250 ÷ 100 = 2,5 dl."},
+      {type:"multi",text:"1,5 l → dl. Vad blir det?",options:["0,15 dl","150 dl","15 dl","1 500 dl"],correct:2,feedback_ok:"Rätt! l → dl, multiplicera med 10.",feedback_bad:"l → dl är mot mindre enhet. Multiplicera med 10: 1,5 × 10 = 15 dl."},
+      {type:"multi",text:"3 dl → cl. Vad blir det?",options:["300 cl","0,3 cl","3 000 cl","30 cl"],correct:3,feedback_ok:"Rätt! dl → cl, multiplicera med 10.",feedback_bad:"dl → cl är mot mindre enhet. Multiplicera med 10: 3 × 10 = 30 cl."},
+      {type:"multi",text:"200 cl → l. Vad blir det?",options:["20 l","0,2 l","2 l","2 000 l"],correct:2,feedback_ok:"Rätt! cl → l, dividera med 100.",feedback_bad:"cl → l är mot större enhet. Dividera med 100: 200 ÷ 100 = 2 l."},
+      {type:"multi",text:"3 000 ml → l. Vad blir det?",options:["300 l","30 l","0,3 l","3 l"],correct:3,feedback_ok:"Rätt! ml → l, dividera med 1 000.",feedback_bad:"ml → l är mot större enhet. Dividera med 1 000: 3 000 ÷ 1 000 = 3 l."},
+      {type:"open",text:"Hur många ml är 2,5 dl? Visa hur du tänker.",facit:"dl → ml är mot en mindre enhet. Multiplicera med 100: 2,5 × 100 = 250 ml."}
+    ],
+    flashcards:[
+      {term:"ml → cl",def:"÷ 10"},{term:"cl → dl",def:"÷ 10"},{term:"dl → l",def:"÷ 10"},
+      {term:"l → dl",def:"× 10"},{term:"dl → cl",def:"× 10"},{term:"l → ml",def:"× 1 000"},
+      {term:"ml → l",def:"÷ 1 000"}
+    ],
+    matching:[
+      {term:"250 ml",def:"2,5 dl"},{term:"1,5 l",def:"15 dl"},
+      {term:"3 dl",def:"30 cl"},{term:"200 cl",def:"2 l"},{term:"3 000 ml",def:"3 l"}
+    ]
+  }
+};
+
+const SURVIVAL_QUESTIONS=[
+  {text:"500 cm → m",options:["50 m","5 m","0,5 m","5 000 m"],correct:1},
+  {text:"3 kg → g",options:["300 g","30 g","3 000 g","30 000 g"],correct:2},
+  {text:"2 l → dl",options:["0,2 dl","200 dl","20 dl","2 000 dl"],correct:2},
+  {text:"80 mm → cm",options:["800 cm","0,8 cm","8 cm","8 000 cm"],correct:2},
+  {text:"0,5 kg → g",options:["5 g","50 g","500 g","5 000 g"],correct:2},
+  {text:"3 dl → ml",options:["3 000 ml","30 ml","300 ml","0,3 ml"],correct:2},
+  {text:"0,8 km → m",options:["8 m","80 m","8 000 m","800 m"],correct:3},
+  {text:"20 hg → kg",options:["200 kg","0,2 kg","2 kg","2 000 kg"],correct:2},
+  {text:"150 cl → l",options:["15 l","0,15 l","1,5 l","1 500 l"],correct:2},
+  {text:"7 m → dm",options:["0,7 dm","700 dm","7 000 dm","70 dm"],correct:3},
+  {text:"2 500 ml → l",options:["25 l","250 l","0,25 l","2,5 l"],correct:3},
+  {text:"6 dm → cm",options:["0,6 cm","600 cm","6 000 cm","60 cm"],correct:3},
+  {text:"1 200 g → kg",options:["120 kg","12 kg","1,2 kg","0,12 kg"],correct:2},
+  {text:"4 km → m",options:["400 m","40 m","40 000 m","4 000 m"],correct:3},
+  {text:"5 hg → g",options:["5 000 g","500 g","50 g","50 000 g"],correct:1}
+];
+
+let studentCode='',currentQuizKey=null,qIdx=0,wrongs=[],answers=[],currentSelected=null;
+let fcIdx=0,retryIdx=0,retryList=[];
+let _stI=null,_stV=null,_sdI=null,_sdV=null,matchedPairs=[];
+let svStreak=0,svEliminated=false,svQList=[],svQIdx=0,svAnswered=false;
+let localDone={};
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function enterApp(){
+  const sc=document.getElementById('codeInput').value.trim().toUpperCase();
+  document.getElementById('codeErr').textContent='';
+  if(!sc){document.getElementById('codeErr').textContent='Ange ditt kodord.';return;}
+  studentCode=sc;
+  showScreen('hubScreen');
+  renderHub();
+}
+
+function renderHub(){
+  document.getElementById('hubName').textContent=studentCode;
+  const keys=Object.keys(QUIZZES);
+  const allDone=keys.every(k=>localDone[k]);
+  document.getElementById('progressPills').innerHTML=
+    keys.map(k=>`<span class="step-pill ${localDone[k]?'done':'active'}">${localDone[k]?'✓ ':''} ${QUIZZES[k].title}</span>`).join('')+
+    `<span class="step-pill ${allDone?'active':''}" style="${allDone?'':'opacity:.4'}">Survival</span>`;
+  let html='';
+  for(const key of keys){
+    html+=`<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div>
+        <div style="font-weight:600;font-size:15px">${QUIZZES[key].title}</div>
+        <div class="muted">${localDone[key]?'Klar – öva vidare':'Quiz ej gjort'}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        ${localDone[key]?`<button onclick="openPractice('${key}')" style="font-size:13px">Öva</button>`:''}
+        <button class="primary" onclick="startQuiz('${key}')" style="font-size:13px">${localDone[key]?'Gör igen':'Starta quiz'}</button>
+      </div>
+    </div>`;
+  }
+  html+=`<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;${allDone?'':'opacity:.5'}">
+    <div>
+      <div style="font-weight:600;font-size:15px">Survival</div>
+      <div class="muted">${allDone?'Alla quiz klara – dags att tävla!':'Gör alla tre quiz först'}</div>
+    </div>
+    <button class="primary" onclick="initSurvival()" style="font-size:13px" ${allDone?'':'disabled'}>Starta</button>
+  </div>`;
+  document.getElementById('hubButtons').innerHTML=html;
+}
+
+function startQuiz(key){
+  currentQuizKey=key;qIdx=0;wrongs=[];answers=[];currentSelected=null;
+  showScreen('quizScreen');renderQ();
+}
+
+function openPractice(key){
+  currentQuizKey=key;
+  document.getElementById('practiceLabel').textContent=QUIZZES[key].title;
+  showScreen('practiceScreen');showPractice('flash');
+}
+
+function goHub(){showScreen('hubScreen');renderHub();}
+
+function renderQ(){
+  const quiz=QUIZZES[currentQuizKey],q=quiz.questions[qIdx],total=quiz.questions.length;
+  document.getElementById('qSubject').textContent=quiz.subject+' · '+quiz.title;
+  document.getElementById('qProgress').style.width=Math.round((qIdx/total)*100)+'%';
+  document.getElementById('qNum').textContent='Fråga '+(qIdx+1)+' av '+total;
+  document.getElementById('qText').textContent=q.text;
+  document.getElementById('qFeedback').className='feedback';
+  document.getElementById('submitBtn').style.display='';
+  document.getElementById('submitBtn').disabled=false;
+  document.getElementById('nextBtn').style.display='none';
+  currentSelected=null;
+  const area=document.getElementById('qArea');
+  if(q.type==='multi'){
+    area.innerHTML=q.options.map((o,i)=>
+      `<button class="option" onclick="selOpt(${i})"><span class="dot"></span><span>${o}</span></button>`
+    ).join('');
+  } else {
+    area.innerHTML=`<textarea id="openAns" placeholder="Skriv ditt svar här..."></textarea>`;
+  }
+}
+
+function selOpt(i){
+  currentSelected=i;
+  document.querySelectorAll('.option').forEach((b,idx)=>b.classList.toggle('selected',idx===i));
+}
+
+function submitQ(){
+  const quiz=QUIZZES[currentQuizKey],q=quiz.questions[qIdx];
+  const fb=document.getElementById('qFeedback');
+  document.getElementById('submitBtn').disabled=true;
+  if(q.type==='multi'){
+    if(currentSelected===null){document.getElementById('submitBtn').disabled=false;return;}
+    const ok=currentSelected===q.correct;
+    document.querySelectorAll('.option').forEach((b,i)=>{
+      b.onclick=null;
+      if(i===q.correct)b.classList.add('correct');
+      else if(i===currentSelected&&!ok)b.classList.add('wrong');
+    });
+    fb.className='feedback show '+(ok?'ok':'bad');
+    fb.textContent=ok?q.feedback_ok:q.feedback_bad;
+    answers[qIdx]={ok};if(!ok)wrongs.push(qIdx);
+  } else {
+    const txt=document.getElementById('openAns')?.value.trim();
+    if(!txt){document.getElementById('submitBtn').disabled=false;return;}
+    document.getElementById('openAns').disabled=true;
+    fb.className='feedback show ok';
+    fb.innerHTML='<strong>Facit:</strong> '+q.facit;
+    answers[qIdx]={ok:null,answer:txt};
+  }
+  document.getElementById('submitBtn').style.display='none';
+  document.getElementById('nextBtn').style.display='';
+  document.getElementById('nextBtn').textContent=qIdx>=quiz.questions.length-1?'Se resultat':'Nästa';
+}
+
+function nextQ(){
+  qIdx++;
+  if(qIdx>=QUIZZES[currentQuizKey].questions.length)finishQuiz();
+  else renderQ();
+}
+
+function finishQuiz(){
+  const scored=answers.filter(a=>a&&a.ok!==null);
+  const correct=scored.filter(a=>a.ok).length;
+  const pct=scored.length?Math.round(correct/scored.length*100):null;
+  localDone[currentQuizKey]=true;
+  openPractice(currentQuizKey);
+  const banner=document.createElement('div');
+  banner.className='feedback show ok';
+  banner.style.marginBottom='1rem';
+  banner.innerHTML=pct!==null?`<strong>${correct}/${scored.length} rätt (${pct}%)</strong> – bra jobbat! Öva vidare nedan.`:'<strong>Klart!</strong> Öva vidare nedan.';
+  document.getElementById('practiceArea').prepend(banner);
+}
+
+function showPractice(mode){
+  document.querySelectorAll('#practiceScreen .stab').forEach(b=>b.classList.remove('active'));
+  const idx=['flash','match','retry'].indexOf(mode);
+  if(idx>-1)document.querySelectorAll('#practiceScreen .stab')[idx].classList.add('active');
+  const area=document.getElementById('practiceArea');
+  if(mode==='flash')renderFlash(area);
+  else if(mode==='match')renderMatch(area);
+  else renderRetry(area);
+}
+
+function renderFlash(area){fcIdx=0;renderFlashCard(area);}
+function renderFlashCard(area){
+  const cards=QUIZZES[currentQuizKey].flashcards,c=cards[fcIdx];
+  area.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <button onclick="fcMove(-1)" ${fcIdx===0?'disabled':''}>Föregående</button>
+      <span class="muted">${fcIdx+1} / ${cards.length}</span>
+      <button onclick="fcMove(1)" ${fcIdx===cards.length-1?'disabled':''}>Nästa</button>
+    </div>
+    <div class="flashcard" onclick="this.classList.toggle('flipped')">
+      <div class="flashcard-inner">
+        <div class="fc-front">${c.term}</div>
+        <div class="fc-back">${c.def}</div>
+      </div>
+    </div>
+    <p class="muted" style="text-align:center;font-size:13px">Klicka för att vända</p>`;
+}
+function fcMove(dir){fcIdx+=dir;renderFlashCard(document.getElementById('practiceArea'));}
+
+function renderMatch(area){
+  _stI=null;_stV=null;_sdI=null;_sdV=null;matchedPairs=[];
+  const pairs=[...QUIZZES[currentQuizKey].matching].sort(()=>Math.random()-.5);
+  const defs=[...QUIZZES[currentQuizKey].matching].map(p=>p.def).sort(()=>Math.random()-.5);
+  area.innerHTML=`<div class="match-cols">
+    <div id="matchTerms">${pairs.map((p,i)=>`<div class="match-item" id="mt${i}" onclick="selTerm(${i},'${esc(p.term)}')">${p.term}</div>`).join('')}</div>
+    <div id="matchDefs">${defs.map((d,i)=>`<div class="match-item" id="md${i}" onclick="selDef(${i},'${esc(d)}')">${d}</div>`).join('')}</div>
+  </div><div id="matchMsg" style="margin-top:1rem;font-size:14px"></div>`;
+}
+function esc(s){return s.replace(/'/g,"\\'");}
+function selTerm(i,val){
+  if(document.getElementById('mt'+i).classList.contains('matched'))return;
+  _stI=i;_stV=val;
+  document.querySelectorAll('[id^=mt]').forEach(el=>el.classList.remove('sel'));
+  document.getElementById('mt'+i).classList.add('sel');tryMatchPair();
+}
+function selDef(i,val){
+  if(document.getElementById('md'+i).classList.contains('matched'))return;
+  _sdI=i;_sdV=val;
+  document.querySelectorAll('[id^=md]').forEach(el=>el.classList.remove('sel'));
+  document.getElementById('md'+i).classList.add('sel');tryMatchPair();
+}
+function tryMatchPair(){
+  if(_stI===null||_sdI===null)return;
+  const ok=QUIZZES[currentQuizKey].matching.find(p=>p.term===_stV&&p.def===_sdV);
+  if(ok){
+    document.getElementById('mt'+_stI).classList.replace('sel','matched');
+    document.getElementById('md'+_sdI).classList.replace('sel','matched');
+    matchedPairs.push(_stV);
+    if(matchedPairs.length===QUIZZES[currentQuizKey].matching.length){
+      const m=document.getElementById('matchMsg');
+      m.textContent='Perfekt! Alla rätt.';m.style.color='#166534';
+    }
+  } else {
+    const ti=_stI,di=_sdI;
+    document.getElementById('mt'+ti).classList.add('wrong-flash');
+    document.getElementById('md'+di).classList.add('wrong-flash');
+    setTimeout(()=>{
+      document.getElementById('mt'+ti)?.classList.remove('wrong-flash','sel');
+      document.getElementById('md'+di)?.classList.remove('wrong-flash','sel');
+    },600);
+  }
+  _stI=null;_stV=null;_sdI=null;_sdV=null;
+}
+
+function renderRetry(area){
+  retryList=wrongs.length?[...wrongs]:QUIZZES[currentQuizKey].questions.map((_,i)=>i);
+  retryIdx=0;
+  if(!wrongs.length){
+    area.innerHTML=`<div class="card" style="text-align:center;padding:1.5rem"><p style="margin-bottom:.25rem;font-weight:600">Inga fel!</p><p class="muted">Du svarade rätt på alla flervalsfrågor.</p></div>`;
+    return;
+  }
+  renderRetryQ(area);
+}
+function renderRetryQ(area){
+  if(retryIdx>=retryList.length){
+    area.innerHTML=`<div class="card" style="text-align:center;padding:1.5rem;font-weight:600">Övningen klar!</div>`;return;
+  }
+  const q=QUIZZES[currentQuizKey].questions[retryList[retryIdx]];
+  const shuffled=[...q.options].map((o,i)=>({o,orig:i})).sort(()=>Math.random()-.5);
+  const newCorrect=shuffled.findIndex(x=>x.orig===q.correct);
+  area.innerHTML=`
+    <div class="muted" style="margin-bottom:.75rem">Öva på felen · ${retryIdx+1} / ${retryList.length}</div>
+    <h3>${q.text}</h3>
+    <div id="retryOpts" style="margin-top:1rem">
+      ${shuffled.map((x,i)=>`<button class="option" onclick="checkRetry(${i},${newCorrect})"><span class="dot"></span><span>${x.o}</span></button>`).join('')}
+    </div>
+    <div class="feedback" id="retryFb"></div>`;
+}
+function checkRetry(i,correct){
+  const area=document.getElementById('practiceArea');
+  const btns=document.querySelectorAll('#retryOpts .option');
+  btns.forEach(b=>b.onclick=null);
+  const ok=i===correct;
+  btns[correct].classList.add('correct');
+  if(!ok)btns[i].classList.add('wrong');
+  const fb=document.getElementById('retryFb');
+  fb.className='feedback show '+(ok?'ok':'bad');
+  fb.textContent=ok?'Rätt!':'Fel, se det markerade svaret.';
+  const btn=document.createElement('button');
+  btn.className='primary';btn.style.marginTop='1rem';
+  btn.textContent=retryIdx<retryList.length-1?'Nästa':'Klar';
+  btn.onclick=()=>{retryIdx++;renderRetryQ(area);};
+  area.appendChild(btn);
+}
+
+function initSurvival(){
+  svStreak=0;svEliminated=false;svAnswered=false;
+  svQList=[...SURVIVAL_QUESTIONS].sort(()=>Math.random()-.5);
+  svQIdx=0;
+  showScreen('survivalScreen');renderSurvivalQ();
+}
+
+function renderSurvivalQ(){
+  if(svQIdx>=svQList.length){endSurvival(true);return;}
+  const q=svQList[svQIdx];svAnswered=false;
+  document.getElementById('svContent').innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <div class="label">Survival · fråga ${svQIdx+1}</div>
+      <div style="font-size:13px;color:#dc2626">♥ ett liv</div>
+    </div>
+    <div style="font-size:22px;font-weight:600;text-align:center;margin:1rem 0;line-height:1.4">${q.text}</div>
+    <div id="svOpts">
+      ${q.options.map((o,i)=>`<button class="option" onclick="svAnswer(${i})"><span class="dot"></span><span>${o}</span></button>`).join('')}
+    </div>
+    <div class="feedback" id="svFb"></div>`;
+}
+
+function svAnswer(i){
+  if(svAnswered)return;svAnswered=true;
+  const q=svQList[svQIdx],ok=i===q.correct;
+  document.querySelectorAll('#svOpts .option').forEach((b,idx)=>{
+    b.onclick=null;
+    if(idx===q.correct)b.classList.add('correct');
+    else if(idx===i&&!ok)b.classList.add('wrong');
+  });
+  const fb=document.getElementById('svFb');
+  if(ok){
+    svStreak++;fb.className='feedback show ok';fb.textContent='Rätt! Nästa fråga...';
+    setTimeout(()=>{svQIdx++;renderSurvivalQ();},1200);
+  } else {
+    svEliminated=true;
+    fb.className='feedback show bad';fb.textContent='Fel! Du är ute. Rätt i rad: '+svStreak+'.';
+    setTimeout(()=>endSurvival(false),1500);
+  }
+}
+
+function endSurvival(won){
+  document.getElementById('svContent').innerHTML=`
+    <div style="text-align:center;padding:2.5rem 0">
+      <div style="font-size:48px;margin-bottom:.5rem">${won?'★':'✕'}</div>
+      <h2 style="margin-bottom:.25rem">${won?'Du klarade alla frågor!':'Du är ute!'}</h2>
+      <p class="muted" style="margin-bottom:1.5rem">Rätt i rad: <strong>${svStreak}</strong></p>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button class="primary" onclick="initSurvival()">Spela igen</button>
+        <button onclick="goHub()">Tillbaka</button>
+      </div>
+    </div>`;
+}
+</script>
+</body>
+</html>
